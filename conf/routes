@@ -12,6 +12,8 @@ GET        /reactive-composition          controllers.Application.reactiveCompos
 
 # Server Sent Events
 GET        /events                        controllers.Application.events()
+
+# WebSocket
 GET        /echo                          controllers.Application.echo()
 
 # Map static resources from the /public folder to the /assets URL path

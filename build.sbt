@@ -11,3 +11,9 @@ libraryDependencies ++= Seq(
   "org.webjars" % "bootstrap" % "2.3.1")
 
 playJavaSettings
+
+initialize := {
+  val _ = initialize.value
+  if (sys.props("java.specification.version") != "1.8")
+    sys.error("Java 8 is required for this project.")
+}
