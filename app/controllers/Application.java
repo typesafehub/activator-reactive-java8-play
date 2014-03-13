@@ -2,12 +2,15 @@ package controllers;
 
 import play.libs.EventSource;
 import play.libs.F;
-import play.libs.WS;
+import play.libs.ws.WS;
+import play.libs.ws.WSResponse;
 import play.mvc.Controller;
 import play.mvc.Result;
+import play.mvc.Results;
 import play.mvc.WebSocket;
 
-import java.util.concurrent.TimeUnit;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static play.libs.EventSource.Event.event;
 
 public class Application extends Controller {
 
@@ -24,38 +27,29 @@ public class Application extends Controller {
     }
 
     public static F.Promise<Result> asyncNonBlockingFoo() {
-        return F.Promise.delayed(() -> ok("async non-blocking foo"), 5, TimeUnit.SECONDS);
+        return F.Promise.delayed(() -> ok("async non-blocking foo"), 5, SECONDS);
+    }
+
+    public static F.Promise<String> getPage(String url) {
+        return WS.url(url).get().map(WSResponse::getBody);
     }
 
     public static F.Promise<Result> reactiveRequest() {
-        F.Promise<WS.Response> typesafePromise = WS.url("http://www.typesafe.com").get();
-        return typesafePromise.map(response -> ok(response.getBody()));
+        return getPage("http://www.typesafe.com").map(Results::ok);
     }
 
     public static F.Promise<Result> reactiveComposition() {
-        final F.Promise<WS.Response> twitterPromise = WS.url("http://www.twitter.com").get();
-        final F.Promise<WS.Response> typesafePromise = WS.url("http://www.typesafe.com").get();
-
-        return twitterPromise.flatMap((twitter) ->
-                typesafePromise.map((typesafe) ->
-                        ok(twitter.getBody() + typesafe.getBody())));
+        return getPage("http://www.twitter.com").flatMap(twitter ->
+                   getPage("http://www.typesafe.com").map(typesafe ->
+                       ok(twitter + typesafe)));
     }
 
     public static Result events() {
-        EventSource eventSource = new EventSource() {
-            public void onConnected() {
-                sendData("hello");
-            }
-        };
-        return ok(eventSource);
+        return ok(EventSource.whenConnected(es -> es.send(event("hello"))));
     }
 
     public static WebSocket<String> echo() {
-        return new WebSocket<String>() {
-            public void onReady(final In<String> in, final Out<String> out) {
-                in.onMessage(out::write);
-            }
-        };
+        return WebSocket.whenReady((in, out) -> in.onMessage(out::write));
     }
 
 }
